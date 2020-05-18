@@ -24,18 +24,36 @@ def extract_single_head(key, query, value, FC, head_ind):
                  for tensor in [key, query, value]
                  ) + (FC[SIZE_PER_HEAD*head_ind:SIZE_PER_HEAD*(head_ind+1),:],)
 
-def prune_attn_head_uniform(key, query, value, FC, key_mask, query_mask, value_mask, FC_mask, sparsity):
-    key_mask[:, :] = 1
-    query_mask[:, :] = 1
-    value_mask[:, :] = 1
-    FC_mask[:, :] = 1
+def prune_uniform(key, query, value, FC, key_mask, query_mask, value_mask, FC_mask, sample_size):
+    key_mask[:, :] = 0
+    query_mask[:, :] = 0
+    value_mask[:, :] = 0
+    FC_mask[:, :] = 0
 
-    sample_size = int(SIZE_PER_HEAD * (1 - sparsity))
     indices = np.random.choice(SIZE_PER_HEAD, size=sample_size, replace=False)
-    key_mask[:, indices] = 0
-    query_mask[:, indices] = 0
-    value_mask[:, indices] = 0
-    FC_mask[indices, :] = 0
+    key_mask[:, indices] = 1
+    query_mask[:, indices] = 1
+    value_mask[:, indices] = 1
+    FC_mask[indices, :] = 1
+
+
+def prune_topk(key, query, value, FC, key_mask, query_mask, value_mask, FC_mask, sample_size):
+    key_mask[:, :] = 0
+    query_mask[:, :] = 0
+    value_mask[:, :] = 0
+    FC_mask[:, :] = 0
+
+    key_query_norms = np.sum(key ** 2, axis=0) + np.sum(query ** 2, axis=0)
+    value_FC_norms = np.sum(value ** 2, axis=0) + np.sum(FC ** 2, axis=1)
+
+    # Sorting the negative norms gives us a descending order sort
+    key_query_ind = np.sort(np.argsort(-key_query_norms)[:sample_size])
+    value_FC_ind = np.sort(np.argsort(-value_FC_norms)[:sample_size])
+
+    key_mask[:, key_query_ind] = 1
+    query_mask[:, key_query_ind] = 1
+    value_mask[:, value_FC_ind] = 1
+    FC_mask[value_FC_ind, :] = 1
 
 
 def prune_multihead_attn(model_dir, out_dir, method, sparsity: float):
@@ -53,6 +71,7 @@ def prune_multihead_attn(model_dir, out_dir, method, sparsity: float):
             ledger[var_name] = tf.contrib.framework.load_variable(model_dir, var_name)
 
         print("Pruning...")
+        sample_size = int(SIZE_PER_HEAD * (1 - sparsity))
         for layer in range(12):
             params = params_for_attn(ledger, layer)
             masks = params_for_attn(ledger, layer, masks=True)
@@ -61,7 +80,9 @@ def prune_multihead_attn(model_dir, out_dir, method, sparsity: float):
                 head_masks = extract_single_head(*masks, head)
 
                 if method == "uniform":
-                    prune_attn_head_uniform(*head_params, *head_masks, sparsity)
+                    prune_uniform(*head_params, *head_masks, sample_size)
+                elif method == "topk":
+                    prune_topk(*head_params, *head_masks, sample_size)
                 else:
                     raise NotImplementedError()
 
