@@ -65,7 +65,7 @@ task pretrain : bert
    # Disable gradient checkpointing b/c it doesn't work for pre-training
    export DISABLE_GRAD_CHECKPOINT=True
 
-    for step in $(seq 1 20); do
+    for step in $(seq 1 10); do
         python $bert/run_pretraining.py --do_train=True --num_train_steps=$(expr $step \* 5000) --input_file=$train/* $params 
         # Note: max_eval_steps is the number of batches we process
         # default batch size is 8
@@ -101,4 +101,10 @@ task approx_error : bert : scripts : coreset_utils
       rm features.json
       rm pre_prune_features.json
       rm sentencized_*
+}
+
+summary approx_error {
+  of approx_error > avg_error {
+    cat $out | awk '{print $5}' > $avg_error
+  }
 }
