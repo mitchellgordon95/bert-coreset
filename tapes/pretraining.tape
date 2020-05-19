@@ -37,7 +37,7 @@ task prune : coreset_utils
 > out_model
 :: sparsity=(Sparsity: 0 10 20 30 40 50 60 70 80 90)
 :: prune_type=(PruneType: uniform topk)
-:: pyenv=@ .submitter=@ .resource_flags=$resource_flags_titan .action_flags=@ {
+:: pyenv=@ .submitter=@ .resource_flags=$resource_flags_16g .action_flags=@ {
 
     python $coreset_utils/prune_multihead_attn.py $in_model $out_model $prune_type 0.$sparsity
 

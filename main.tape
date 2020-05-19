@@ -5,9 +5,12 @@ import "tapes/data_prep.tape"
 import "tapes/pretraining.tape"
 import "tapes/downstream.tape"
 
-plan main {
-  reach train_glue via (Sparsity: 30 60 90) * (PruneType: uniform) * (GlueTask: *)
-  reach approx_error via (Sparsity: 30 60 90) * (PruneType: uniform) * (GlueTask: *)
+plan glue {
+  reach train_glue via (Sparsity: 0 30 60 90) * (PruneType: *) * (GlueTask: *)
+}
+
+plan approx_error {
+  reach approx_error via (Sparsity: 0 30 60 90) * (PruneType: *) * (GlueTask: *)
 }
 
 global {
