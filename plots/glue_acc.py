@@ -9,6 +9,10 @@ tabular = subprocess.Popen(['tabular'], stdin=ducttape.stdout, stdout=subprocess
 csv = subprocess.check_output(["grep", "-o", "^[^#]*"], stdin=tabular.stdout).decode('ascii')
 
 table = pd.read_csv(StringIO(csv), sep="\s+")
+table['Sparsity'] = pd.to_numeric(table['Sparsity'], errors='raise')
+table['acc'] = pd.to_numeric(table['acc'], errors='coerce')
+table.round(2)
+
 
 for task in pd.unique(table["GlueTask"]):
 
