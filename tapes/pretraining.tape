@@ -43,6 +43,27 @@ task prune : coreset_utils
 
 }
 
+task post_prune_dev_loss : bert 
+< in_model=$out_model@prune
+< orig_model=$model@bert_model
+< dev=$dev@train_test_split
+> out
+:: pyenv=@ .submitter=@ .resource_flags=$resource_flags_titan .action_flags=@ {
+    params="--train_batch_size 32
+    --output_dir tmp
+    --max_seq_length 128
+    --max_predictions_per_seq 20
+    --num_warmup_steps 10
+    --keep_checkpoint_max 1
+    --learning_rate 2e-5
+    --bert_config_file $orig_model/bert_config.json
+    --init_checkpoint $in_model"
+
+    export DISABLE_GRAD_CHECKPOINT=True
+    python $bert/run_pretraining.py --do_eval=True --max_eval_steps=2000 --input_file=$dev/* $params 
+    touch $out
+}
+
 task pretrain : bert 
 < in_model=$out_model@prune
 < orig_model=$model@bert_model
@@ -51,7 +72,6 @@ task pretrain : bert
 > out_model
 :: pyenv=@ .submitter=@ .resource_flags=$resource_flags_titan .action_flags=@ {
 
-    # TODO: this might be broken, if we need to use in_model/name.chkpt instead
     params="--train_batch_size 32
     --max_seq_length 128
     --max_predictions_per_seq 20
@@ -72,7 +92,6 @@ task pretrain : bert
         python $bert/run_pretraining.py --do_eval=True --max_eval_steps=2000 --input_file=$dev/* $params
    done
 }
-
 
 task approx_error : bert : scripts : coreset_utils
 < pruned_model=$out_model@prune
@@ -101,10 +120,4 @@ task approx_error : bert : scripts : coreset_utils
       rm features.json
       rm pre_prune_features.json
       rm sentencized_*
-}
-
-summary approx_error {
-  of approx_error > avg_error {
-    cat $out | awk '{print $5}' > $avg_error
-  }
 }

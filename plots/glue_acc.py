@@ -33,9 +33,9 @@ for task in pd.unique(table["GlueTask"]):
     axes.legend()
     fig.savefig(f'plots_out/sparsity_vs_acc_{task}.png')
 
-    if len(uniform["acc"]) == unique_sparsity.shape[0] and len(topk["acc"]) == unique_sparsity.shape[0]:
-        total_uniform_acc += uniform["acc"]
-        total_topk_acc += topk["acc"]
+    if len(uniform["acc"]) == unique_sparsity.shape[0] and len(topk["acc"]) == unique_sparsity.shape[0] and not uniform["acc"].isnull().values.any() and not topk["acc"].isnull().values.any():
+        total_uniform_acc += uniform["acc"].to_numpy()
+        total_topk_acc += topk["acc"].to_numpy()
         count += 1
     else:
         print(f"Skipping {task} for averages since it's not complete")

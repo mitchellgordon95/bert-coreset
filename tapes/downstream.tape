@@ -23,9 +23,3 @@ task train_glue : bert
    done
    python $bert/run_classifier.py --do_eval=True --eval_train_data=True $params 
 }
-
-summary glue_acc {
-  of train_glue > acc {
-    tail -4 $(dirname $out_model)/job.out | head -n 1 | awk '{print $4}' > $acc
-  }
-}
